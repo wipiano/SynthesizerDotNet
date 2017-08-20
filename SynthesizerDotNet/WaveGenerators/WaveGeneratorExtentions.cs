@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace SynthesizerDotNet.WaveGenerators
 {
-    public static class WaveCombinator
+    public static class WaveGeneratorExtentions
     {
         /// <summary>
         /// 波形出力関数を合成します
