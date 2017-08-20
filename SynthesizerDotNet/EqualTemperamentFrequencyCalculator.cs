@@ -25,7 +25,7 @@ namespace SynthesizerDotNet
         /// </summary>
         public double GetFrequency(Note note)
         {
-            return this.A4 * Math.Pow(2, note - Note.A4);
+            return this.A4 * Math.Pow(2, ((int)note - (int)Note.A4) / 12.0);
         }
     }
 }
