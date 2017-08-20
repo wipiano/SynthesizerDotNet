@@ -1,0 +1,27 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+
+<# 
+var notes = new [] {"C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "B", "H"}; 
+
+var octaves = Enumerable.Range(-1, 11);
+
+var noteNumber = 0;
+#>
+
+namespace SynthesizerDotNet
+{
+    public enum Note
+    {
+<# foreach (var octave in octaves) { #>
+<# foreach (var noteName in notes) { #>
+        <#= noteName #><#= (octave < 0 ? $"_{-1 * octave}" : $"{octave}") #> = <#= noteNumber #>,
+<# 
+noteNumber++;
+}} #>
+    }
+}

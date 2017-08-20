@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynthesizerDotNet", "Synthe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynthesizerDotNet.Console.A440", "SynthesizerDotNet.Console.A440\SynthesizerDotNet.Console.A440.csproj", "{664EB9F2-BF49-44B1-A398-6071D22BB0E7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynthesizerDotNet.Console.Overtone", "SynthesizerDotNet.Console.Overtone\SynthesizerDotNet.Console.Overtone.csproj", "{0A78856E-7927-4828-AF8C-AF959DA574DC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{664EB9F2-BF49-44B1-A398-6071D22BB0E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{664EB9F2-BF49-44B1-A398-6071D22BB0E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{664EB9F2-BF49-44B1-A398-6071D22BB0E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A78856E-7927-4828-AF8C-AF959DA574DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A78856E-7927-4828-AF8C-AF959DA574DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A78856E-7927-4828-AF8C-AF959DA574DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A78856E-7927-4828-AF8C-AF959DA574DC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

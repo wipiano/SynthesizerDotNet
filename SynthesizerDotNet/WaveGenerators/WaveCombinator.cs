@@ -12,7 +12,22 @@ namespace SynthesizerDotNet.WaveGenerators
         /// <returns></returns>
         public static IWaveGenerator Combine(this IWaveGenerator first, IWaveGenerator second)
         {
+            if (first is CombinedWaveGenerator combined)
+            {
+                return combined.AddGenerator(second);
+            }
+
             return new CombinedWaveGenerator(first, second);
+        }
+
+        /// <summary>
+        /// 音量を調整します
+        /// </summary>
+        /// <param name="generator"></param>
+        /// <returns></returns>
+        public static IWaveGenerator Volume(this IWaveGenerator generator, double volume)
+        {
+            return new VolumedWaveGenerator(generator, volume);
         }
 
         /// <summary>
@@ -27,19 +42,31 @@ namespace SynthesizerDotNet.WaveGenerators
 
     internal class CombinedWaveGenerator : IWaveGenerator
     {
-        public int SamplePerSecond { get; }
+        public int SamplePerSecond => _generators.First().SamplePerSecond;
 
         private readonly IEnumerable<IWaveGenerator> _generators;
 
         public CombinedWaveGenerator(IWaveGenerator first, IWaveGenerator second)
+            :this(new [] { first, second })
         {
-            if (first.SamplePerSecond != second.SamplePerSecond)
+        }
+
+        public CombinedWaveGenerator(params IWaveGenerator[] generators)
+        {
+            // サンプリング周波数が等しいこと
+            var isSameSampling = generators.Select(g => g.SamplePerSecond).All(s => s == generators[0].SamplePerSecond);
+
+            if (!isSameSampling)
             {
                 throw new InvalidOperationException("サンプリング周波数がことなる波形ジェネレータを合成できません");
             }
 
-            this.SamplePerSecond = first.SamplePerSecond;
-            _generators = new IWaveGenerator[] {first, second};
+            _generators = generators.ToArray();
+        }
+
+        public CombinedWaveGenerator AddGenerator(IWaveGenerator generator)
+        {
+            return new CombinedWaveGenerator(_generators.Concat(new [] { generator }).ToArray());
         }
 
         public double GetValue(int n)
@@ -51,7 +78,7 @@ namespace SynthesizerDotNet.WaveGenerators
 
     internal class NormalizedWaveGenerator : IWaveGenerator
     {
-        public int SamplePerSecond { get; }
+        public int SamplePerSecond => _generator.SamplePerSecond;
 
         private readonly IWaveGenerator _generator;
         private readonly double[] _buffer;
@@ -67,6 +94,26 @@ namespace SynthesizerDotNet.WaveGenerators
 
         public double GetValue(int n)
             => ((n < _buffer.Length) ? _buffer[n] : _generator.GetValue(n)) / _max;
+
+        public IEnumerable<double> GetWave()
+            => Enumerable.Range(0, int.MaxValue).Select(this.GetValue);
+    }
+
+    internal class VolumedWaveGenerator : IWaveGenerator
+    {
+        public int SamplePerSecond => _generator.SamplePerSecond;
+
+        private readonly IWaveGenerator _generator;
+        private readonly double _volume;
+
+        public VolumedWaveGenerator(IWaveGenerator generator, double volume)
+        {
+            _generator = generator;
+            _volume = volume;
+        }
+
+        public double GetValue(int n)
+            => _generator.GetValue(n) * _volume;
 
         public IEnumerable<double> GetWave()
             => Enumerable.Range(0, int.MaxValue).Select(this.GetValue);
