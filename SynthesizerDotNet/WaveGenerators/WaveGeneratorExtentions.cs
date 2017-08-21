@@ -38,8 +38,58 @@ namespace SynthesizerDotNet.WaveGenerators
         {
             return new NormalizedWaveGenerator(generator, sampleSize);
         }
+
+        /// <summary>
+        /// 引数に時間をとる関数をあらわす
+        /// </summary>
+        /// <param name="time">時間 (秒)</param>
+        /// <returns></returns>
+        public delegate double FunctionForTime(double time);
+
+        /// <summary>
+        /// 時間によって変化する任意の関数を適用します
+        /// </summary>
+        public static IWaveGenerator ApplyTimeFunction(this IWaveGenerator generator, FunctionForTime func)
+        {
+            return new FunctionAppliedWaveGenerator(generator, func);
+        }
+
+        /// <summary>
+        /// 直線的に音量を減衰させます
+        /// </summary>
+        /// <param name="seconds">減衰にかかる時間</param>
+        public static IWaveGenerator LinearDecrease(this IWaveGenerator generator, double seconds)
+        {
+            return generator.ApplyTimeFunction((sec) => sec > seconds ? 0 : 1 - (sec / seconds));
+        }
+
+        /// <summary>
+        /// 正弦波によるビブラートを適用します
+        /// </summary>
+        /// <param name="generator">対象</param>
+        /// <param name="freq">1 秒間のビブラート回数</param>
+        /// <param name="depth">ビブラートの深さ (大きいほど深い)</param>
+        /// <param name="minVolume">最小の音量。</param>
+        /// <returns></returns>
+        public static IWaveGenerator SineVibrato(this IWaveGenerator generator, double freq, double depth, double minVolume)
+        {
+            var vibrato = new SinWaveGenerator(generator.SamplePerSecond, freq).Volume(depth).AddConstant(depth + minVolume);
+            return new MultipleWaveGenerator(generator, vibrato);
+        }
+
+        /// <summary>
+        /// 定数のげたをはかせる
+        /// </summary>
+        /// <returns></returns>
+        public static IWaveGenerator AddConstant(this IWaveGenerator generator, double value)
+        {
+            return new AddConstantWaveGenerator(generator, value);
+        }
     }
 
+    /// <summary>
+    /// Generator 同士を足し合わせてできる新しい Generator
+    /// </summary>
     internal class CombinedWaveGenerator : IWaveGenerator
     {
         public int SamplePerSecond => _generators.First().SamplePerSecond;
@@ -76,46 +126,103 @@ namespace SynthesizerDotNet.WaveGenerators
             => Enumerable.Range(0, int.MaxValue).Select(this.GetValue);
     }
 
-    internal class NormalizedWaveGenerator : IWaveGenerator
+    internal abstract class SimpleCustormizedWaveGeneratorBase : IWaveGenerator
     {
-        public int SamplePerSecond => _generator.SamplePerSecond;
+        public int SamplePerSecond => this.BaseGenerator.SamplePerSecond;
 
-        private readonly IWaveGenerator _generator;
-        private readonly double[] _buffer;
-        private readonly double _max;
+        protected readonly IWaveGenerator BaseGenerator;
 
-        public NormalizedWaveGenerator(IWaveGenerator generator, int sampleSize)
+        protected SimpleCustormizedWaveGeneratorBase(IWaveGenerator baseGenerator)
         {
-            _generator = generator;
-            _buffer = generator.GetWave().Take(sampleSize).ToArray();
-
-            _max = Math.Max(Math.Abs(_buffer.Max()), Math.Abs(_buffer.Min()));
+            this.BaseGenerator = baseGenerator;
         }
 
-        public double GetValue(int n)
-            => ((n < _buffer.Length) ? _buffer[n] : _generator.GetValue(n)) / _max;
+        public abstract double GetValue(int n);
 
         public IEnumerable<double> GetWave()
             => Enumerable.Range(0, int.MaxValue).Select(this.GetValue);
     }
 
-    internal class VolumedWaveGenerator : IWaveGenerator
+    internal class NormalizedWaveGenerator : SimpleCustormizedWaveGeneratorBase
     {
-        public int SamplePerSecond => _generator.SamplePerSecond;
+        private readonly double[] _buffer;
+        private readonly double _max;
 
-        private readonly IWaveGenerator _generator;
+        public NormalizedWaveGenerator(IWaveGenerator generator, int sampleSize)
+            : base (generator)
+        {
+            _buffer = generator.GetWave().Take(sampleSize).ToArray();
+
+            _max = Math.Max(Math.Abs(_buffer.Max()), Math.Abs(_buffer.Min()));
+        }
+
+        public override double GetValue(int n)
+            => ((n < _buffer.Length) ? _buffer[n] : this.BaseGenerator.GetValue(n)) / _max;
+    }
+
+    internal class VolumedWaveGenerator : SimpleCustormizedWaveGeneratorBase
+    {
         private readonly double _volume;
 
         public VolumedWaveGenerator(IWaveGenerator generator, double volume)
+            : base(generator)
         {
-            _generator = generator;
             _volume = volume;
         }
 
-        public double GetValue(int n)
-            => _generator.GetValue(n) * _volume;
+        public override double GetValue(int n)
+            => this.BaseGenerator.GetValue(n) * _volume;
+    }
 
-        public IEnumerable<double> GetWave()
-            => Enumerable.Range(0, int.MaxValue).Select(this.GetValue);
+    internal class AddConstantWaveGenerator : SimpleCustormizedWaveGeneratorBase
+    {
+        private readonly double _const;
+
+        public AddConstantWaveGenerator(IWaveGenerator generator, double value)
+            : base(generator)
+        {
+            _const = value;
+        }
+
+        public override double GetValue(int n)
+            => this.BaseGenerator.GetValue(n) + _const;
+    }
+
+    internal class FunctionAppliedWaveGenerator : SimpleCustormizedWaveGeneratorBase
+    {
+        private readonly WaveGeneratorExtentions.FunctionForTime _func;
+
+        public FunctionAppliedWaveGenerator(IWaveGenerator generator, WaveGeneratorExtentions.FunctionForTime func)
+            : base(generator)
+        {
+            _func = func;
+        }
+
+        public override double GetValue(int n)
+        {
+            // 秒に変換
+            double sec = (double)n / this.SamplePerSecond;
+
+            return this.BaseGenerator.GetValue(n) * _func(sec);
+        }
+    }
+
+    /// <summary>
+    /// Generator 同士を掛け算してできるあたらしい Generator をあらわす
+    /// </summary>
+    internal class MultipleWaveGenerator : SimpleCustormizedWaveGeneratorBase
+    {
+        private readonly IWaveGenerator _secondGenerator;
+
+        public MultipleWaveGenerator(IWaveGenerator first, IWaveGenerator second)
+            : base(first)
+        {
+            _secondGenerator = second;
+        }
+
+        public override double GetValue(int n)
+        {
+            return this.BaseGenerator.GetValue(n) * _secondGenerator.GetValue(n);
+        }
     }
 }
